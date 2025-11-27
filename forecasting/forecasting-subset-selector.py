@@ -3,11 +3,13 @@
 import glob
 from pathlib import Path
 import shutil
+import os
 
-path = 'C:/Users/Solar/Documents/GitHub/solar-resource-course/forecasting/data/'
+path = 'C:/Users/Solar/Documents/GitHub/solar-resource-course/forecasting/'
 
+os.chdir(path)
 
-files = glob.glob(path + '*T0600.csv')
+files = glob.glob('data/*T0600.csv')
 
 new_folder = 'data-daily'
 
