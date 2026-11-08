@@ -26,10 +26,10 @@ url = "https://api.open-meteo.com/v1/forecast"
 
 def get_forecast(latitude, longitude, models):
     params = {
-    	"latitude": latitude,
-    	"longitude": longitude,
-    	"hourly": "shortwave_radiation",
-    	"models": models,
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": "shortwave_radiation",
+        "models": models,
     }
     
     responses = openmeteo.weather_api(url, params=params)
@@ -45,23 +45,23 @@ def get_forecast(latitude, longitude, models):
             print(f"Elevation: {response.Elevation()} m asl")
             print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
             print(f"Model Nº: {response.Model()}")
-    	
-    	# Process hourly data. The order of variables needs to be the same as requested.
-    	hourly = response.Hourly()
-    	hourly_shortwave_radiation = hourly.Variables(0).ValuesAsNumpy()
-    	
-    	hourly_data = {"date": pd.date_range(
-    		start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-    		end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-    		freq = pd.Timedelta(seconds = hourly.Interval()),
-    		inclusive = "left"
-    	)}
-    	
-    	hourly_data["shortwave_radiation"] = hourly_shortwave_radiation
+        
+        # Process hourly data. The order of variables needs to be the same as requested.
+        hourly = response.Hourly()
+        hourly_shortwave_radiation = hourly.Variables(0).ValuesAsNumpy()
+        
+        hourly_data = {"date": pd.date_range(
+            start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
+            end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
+            freq = pd.Timedelta(seconds = hourly.Interval()),
+            inclusive = "left"
+        )}
+        
+        hourly_data["shortwave_radiation"] = hourly_shortwave_radiation
 
-    	hourly_dataframe = pd.DataFrame(data = hourly_data).set_index('date')
-    	hourly_dataframe = hourly_dataframe.rename(columns={'shortwave_radiation': model})
-    	dfs.append(hourly_dataframe)
+        hourly_dataframe = pd.DataFrame(data = hourly_data).set_index('date')
+        hourly_dataframe = hourly_dataframe.rename(columns={'shortwave_radiation': model})
+        dfs.append(hourly_dataframe)
     
     return pd.concat(dfs, axis='columns')
 
@@ -95,6 +95,7 @@ while True:
     now = pd.Timestamp.today(tz='UTC')
     #if now.minute == 0:
     if now.second == 0:
+        print(now.strftime("%Y-%m-%d %H:%M"))
 
         # DMI stations
         for _, station in ghi_stations.iterrows():
