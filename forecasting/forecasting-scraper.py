@@ -1,13 +1,16 @@
-import openmeteo_requests
 
+# %%
+import openmeteo_requests
 import pandas as pd
+import requests
 import requests_cache
 from retry_requests import retry
 import numpy as np
 import time
 import os
+from pathlib import Path
 
-os.chdir('C:/Users/Solar/Documents/GitHub/solar-resource-course/forecasting/')
+os.chdir(Path.home() / r'OneDrive - Danmarks Tekniske Universitet\forecast-data')
 
 # %%
 
@@ -30,11 +33,14 @@ def get_forecast(latitude, longitude, models):
     }
     
     responses = openmeteo.weather_api(url, params=params)
+    if len(responses) != len(models):
+        raise ValueError("Number of responses does not match number of models")
     
     # Process 1 location and 8 models
     dfs = []
     for model, response in zip(models, responses):
-    	print(f"\nCoordinates: {response.Latitude()}°N {response.Longitude()}°E")
+    	print(f"\n{model}")
+    	print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
     	print(f"Elevation: {response.Elevation()} m asl")
     	print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
     	print(f"Model Nº: {response.Model()}")
@@ -62,29 +68,55 @@ def get_forecast(latitude, longitude, models):
 
 # %%
 models = ["dmi_harmonie_arome_europe", "metno_nordic", "ecmwf_ifs025", "ecmwf_aifs025_single", "gfs_global", "ecmwf_ifs", "dmi_seamless", "gfs_seamless"]
+#models = ["ecmwf_ifs", "ecmwf_ifs025", "ecmwf_aifs025_single", "dmi_harmonie_arome_europe", "dmi_seamless", "metno_nordic", "metno_seamless", "ncep_gfs_seamless", "ncep_aigfs025"],
 
-irradiance_stations = pd.read_csv('dmi_stations_with_ghi.txt')
-irradiance_stations = irradiance_stations['stationId']
 
-dmi_stations = pd.read_html('https://opendatadocs.dmi.govcloud.dk/Data/Meteorological_Observation_Data_Stations')[0]
-dmi_stations = dmi_stations[dmi_stations['validFrom'].notna()]
 
+# %% Get station list from DMI
+
+dmi_url = "https://opendataapi.dmi.dk/v2/metObs/collections/station/items"
+res = requests.get(dmi_url, params={"status": "Active", "limit": 10000}, timeout=30)
+res.raise_for_status()
+
+df = pd.json_normalize(res.json()["features"])
+df.columns = df.columns.str.removeprefix("properties.")
+df[["longitude", "latitude"]] = df["geometry.coordinates"].apply(pd.Series)
+df = df[df["country"] == "DNK"]
+current = df[df["validTo"].isna()]  # latest metadata version only
+has_ghi = current["parameterId"].apply(
+    lambda p: isinstance(p, list) and "radia_glob_past1h" in p
+)
+ghi_stations = current[has_ghi]
+
+# print(ghi_stations[["stationId", "name", "type", "owner"]])
+# %%
 
 while True:
     now = pd.Timestamp.today(tz='UTC')
-    if now.minute == 0:
+    #if now.minute == 0:
+    if now.second == 0:
 
         # DMI stations
-        for station_id in irradiance_stations:
-            latitude = dmi_stations.loc[dmi_stations['stationId']==station_id, 'latitude'].values[0]
-            longitude = dmi_stations.loc[dmi_stations['stationId']==station_id, 'longitude'].values[0]
-        
-            data = get_forecast(latitude, longitude, models)
-            data.to_csv(f"data/{str(station_id).zfill(5)}_{now.strftime('%Y%m%dT%H%M')}.csv")
+        for _, station in ghi_stations.iterrows():
+            print(station['stationId'], station["latitude"], station["longitude"])
+            data = get_forecast(station["latitude"], station["longitude"], models)
+            data.to_csv(f"{str(station['stationId']).zfill(5)}_{now.strftime('%Y%m%dT%H00')}.csv")
         
         # DTU station
-        latitude, longitude = 55.79066, 12.5251
-        data.to_csv(f"data/dtu_{now.strftime('%Y%m%dT%H%M')}.csv")
-        time.sleep(61)  # sleep for just over one minute
+        data = get_forecast(55.79066, 12.5251, models)
+        data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H00')}.csv")
+        #time.sleep(61)  # sleep for just over one minute
+        time.sleep(1)  # sleep for just over one minute
     else:
-        time.sleep(10)
+        #time.sleep(10)
+        time.sleep(0.1)
+# %%
+
+# files = list(Path.cwd().glob("*.csv"))
+
+# for f in files:
+#     dfi = pd.read_csv(f)
+#     dfi = dfi.loc[:, dfi.notna().any(axis="rows")]
+#     print(f"{dfi.shape}  {f.name}")
+
+# %%
