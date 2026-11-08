@@ -38,12 +38,13 @@ def get_forecast(latitude, longitude, models):
     
     # Process 1 location and 8 models
     dfs = []
-    for model, response in zip(models, responses):
-    	print(f"\n{model}")
-    	print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
-    	print(f"Elevation: {response.Elevation()} m asl")
-    	print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
-    	print(f"Model Nº: {response.Model()}")
+    for model, response in zip(models, responses, verbose=False):
+        if verbose:
+            print(f"\n{model}")
+            print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
+            print(f"Elevation: {response.Elevation()} m asl")
+            print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
+            print(f"Model Nº: {response.Model()}")
     	
     	# Process hourly data. The order of variables needs to be the same as requested.
     	hourly = response.Hourly()
@@ -60,7 +61,6 @@ def get_forecast(latitude, longitude, models):
 
     	hourly_dataframe = pd.DataFrame(data = hourly_data).set_index('date')
     	hourly_dataframe = hourly_dataframe.rename(columns={'shortwave_radiation': model})
-    	print("\nHourly data\n", hourly_dataframe)
     	dfs.append(hourly_dataframe)
     
     return pd.concat(dfs, axis='columns')
@@ -104,12 +104,12 @@ while True:
         
         # DTU station
         data = get_forecast(55.79066, 12.5251, models)
-        data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H00')}.csv")
-        #time.sleep(61)  # sleep for just over one minute
-        time.sleep(1)  # sleep for just over one minute
+        data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H%M')}.csv")
+        time.sleep(61)  # sleep for just over one minute
+        # time.sleep(1)  # sleep time for rapid update
     else:
-        #time.sleep(10)
-        time.sleep(0.1)
+        time.sleep(10)
+        # time.sleep(0.1)  # sleep time rapid update
 # %%
 
 # files = list(Path.cwd().glob("*.csv"))
