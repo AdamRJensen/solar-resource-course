@@ -15,8 +15,9 @@ os.chdir(Path.home() / r'OneDrive - Danmarks Tekniske Universitet\forecast-data'
 # %%
 
 # Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+cache_session = requests_cache.CachedSession('.cache', expire_after = 1800)
+retry_session = retry(cache_session, retries = 5, backoff_factor = 2,
+                      status_to_retry=(429, 500, 502, 503, 504))
 openmeteo = openmeteo_requests.Client(session = retry_session)
 
 # Make sure all required weather variables are listed here
@@ -63,7 +64,7 @@ def get_forecast(latitude, longitude, models, verbose=False):
         hourly_dataframe = hourly_dataframe.rename(columns={'shortwave_radiation': model})
         dfs.append(hourly_dataframe)
     
-    return pd.concat(dfs, axis='columns')
+    return pd.concat(dfs, axis='columns', sort=True)
 
 
 # %%
@@ -99,13 +100,19 @@ while True:
 
         # DMI stations
         for _, station in ghi_stations.iterrows():
-            print(station['stationId'], station["latitude"], station["longitude"])
-            data = get_forecast(station["latitude"], station["longitude"], models)
-            data.to_csv(f"{str(station['stationId']).zfill(5)}_{now.strftime('%Y%m%dT%H00')}.csv")
-        
+            try:
+                print(station['stationId'], station["latitude"], station["longitude"])
+                data = get_forecast(station["latitude"], station["longitude"], models)
+                data.to_csv(f"{str(station['stationId']).zfill(5)}_{now.strftime('%Y%m%dT%H00')}.csv")
+            except Exception as e:
+                print(f"Error fetching data for station {station['stationId']}: {e}")
+            time.sleep(1)  # spread requests out
         # DTU station
-        data = get_forecast(55.79066, 12.5251, models)
-        data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H%M')}.csv")
+        try:
+            data = get_forecast(55.79066, 12.5251, models)
+            data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H%M')}.csv")
+        except Exception as e:
+            print(f"Error fetching data for DTU station: {e}")
         time.sleep(61)  # sleep for just over one minute
         #time.sleep(1)  # sleep time for rapid update
     else:
