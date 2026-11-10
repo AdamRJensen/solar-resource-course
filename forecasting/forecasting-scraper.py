@@ -24,7 +24,7 @@ openmeteo = openmeteo_requests.Client(session = retry_session)
 url = "https://api.open-meteo.com/v1/forecast"
 
 
-def get_forecast(latitude, longitude, models):
+def get_forecast(latitude, longitude, models, verbose=False):
     params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -38,7 +38,7 @@ def get_forecast(latitude, longitude, models):
     
     # Process 1 location and 8 models
     dfs = []
-    for model, response in zip(models, responses, verbose=False):
+    for model, response in zip(models, responses):
         if verbose:
             print(f"\n{model}")
             print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
@@ -93,8 +93,8 @@ ghi_stations = current[has_ghi]
 
 while True:
     now = pd.Timestamp.today(tz='UTC')
-    #if now.minute == 0:
-    if now.second == 0:
+    # if now.second == 0:
+    if now.minute == 0:
         print(now.strftime("%Y-%m-%d %H:%M"))
 
         # DMI stations
@@ -107,10 +107,10 @@ while True:
         data = get_forecast(55.79066, 12.5251, models)
         data.to_csv(f"dtu_{now.strftime('%Y%m%dT%H%M')}.csv")
         time.sleep(61)  # sleep for just over one minute
-        # time.sleep(1)  # sleep time for rapid update
+        #time.sleep(1)  # sleep time for rapid update
     else:
         time.sleep(10)
-        # time.sleep(0.1)  # sleep time rapid update
+        #time.sleep(0.1)  # sleep time rapid update
 # %%
 
 # files = list(Path.cwd().glob("*.csv"))
